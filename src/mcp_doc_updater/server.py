@@ -19,24 +19,27 @@ from .models import (
     MarkdownUpdateConfig,
     ChangeImportance,
 )
+from .utils import auto_detect_paths, find_changelog_heading
 
 
 # Tool input models
 class UpdateReadmeChangelogInput(BaseModel):
     """Input for update_readme_changelog tool."""
-    repo_path: str = Field(
-        description="Path to Git repository"
+    repo_path: Optional[str] = Field(
+        default=None,
+        description="Path to Git repository (auto-detected if not provided)"
     )
-    readme_path: str = Field(
-        description="Path to README file (relative to repo or absolute)"
+    readme_path: Optional[str] = Field(
+        default=None,
+        description="Path to README file (auto-detected if not provided, relative to repo or absolute)"
     )
     comparison_mode: str = Field(
         default="latest_vs_previous",
         description="Comparison mode: latest_vs_previous, working_tree_vs_head, or latest_vs_tag"
     )
-    heading_marker: str = Field(
-        default="## 更新日志",
-        description="Markdown heading to insert changelog under"
+    heading_marker: Optional[str] = Field(
+        default=None,
+        description="Markdown heading to insert changelog under (auto-detected if not provided)"
     )
     filter_trivial: bool = Field(
         default=True,
@@ -67,9 +70,11 @@ async def list_tools() -> list[Tool]:
         Tool(
             name="update_readme_changelog",
             description=(
-                "Analyze Git code changes and update README changelog. "
+                "Analyze Git code changes and update README changelog with full auto-detection. "
+                "Automatically detects: Git repository path, README file location, and changelog heading. "
                 "Intelligently extracts key changes, filters trivial modifications, "
-                "and generates Chinese changelog entries in format: YYYY年MM月DD日  内容"
+                "and generates Chinese changelog entries in format: YYYY年MM月DD日  内容. "
+                "All parameters are optional and will be auto-detected if not provided."
             ),
             inputSchema=UpdateReadmeChangelogInput.model_json_schema(),
         )
@@ -99,6 +104,28 @@ async def handle_update_readme_changelog(arguments: dict) -> list[TextContent]:
         # Parse and validate input
         input_data = UpdateReadmeChangelogInput(**arguments)
 
+        # Auto-detect paths if not provided
+        if not input_data.repo_path or not input_data.readme_path:
+            detected_repo, detected_readme = auto_detect_paths()
+
+            if not input_data.repo_path:
+                if detected_repo:
+                    input_data.repo_path = str(detected_repo)
+                else:
+                    return [TextContent(
+                        type="text",
+                        text="Error: Could not auto-detect Git repository. Please provide repo_path parameter."
+                    )]
+
+            if not input_data.readme_path:
+                if detected_readme:
+                    input_data.readme_path = str(detected_readme)
+                else:
+                    return [TextContent(
+                        type="text",
+                        text="Error: Could not auto-detect README file. Please provide readme_path parameter."
+                    )]
+
         # Resolve paths
         repo_path = Path(input_data.repo_path).resolve()
         if not repo_path.exists():
@@ -118,6 +145,15 @@ async def handle_update_readme_changelog(arguments: dict) -> list[TextContent]:
                 type="text",
                 text=f"Error: README file does not exist: {readme_path}"
             )]
+
+        # Auto-detect heading marker if not provided
+        if not input_data.heading_marker:
+            detected_heading = find_changelog_heading(readme_path)
+            if detected_heading:
+                input_data.heading_marker = detected_heading
+            else:
+                # Use default Chinese heading
+                input_data.heading_marker = "## 更新日志"
 
         # Parse comparison mode
         try:
@@ -185,6 +221,11 @@ async def handle_update_readme_changelog(arguments: dict) -> list[TextContent]:
         # Build success response
         response_parts = [
             f"✓ Successfully updated {readme_path.name}",
+            f"",
+            f"Auto-detected paths:",
+            f"- Repository: {repo_path}",
+            f"- README: {readme_path}",
+            f"- Heading marker: {input_data.heading_marker}",
             f"",
             f"Changelog entry:",
             f"{entry.to_markdown()}",

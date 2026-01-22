@@ -1,8 +1,9 @@
 """Utility functions for MCP Doc Updater."""
 
+import os
 import re
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Tuple
 from fnmatch import fnmatch
 
 
@@ -219,3 +220,113 @@ def is_code_file(file_path: str) -> bool:
 
     ext = get_file_extension(file_path)
     return ext.lower() in code_extensions
+
+
+def find_git_repo() -> Optional[Path]:
+    """
+    Find the Git repository by searching upward from current directory.
+
+    Returns:
+        Path to Git repository root, or None if not found
+    """
+    current = Path.cwd()
+
+    # Search upward for .git directory
+    while current != current.parent:
+        if (current / ".git").exists():
+            return current
+        current = current.parent
+
+    # Check root directory
+    if (current / ".git").exists():
+        return current
+
+    return None
+
+
+def find_readme_file(repo_path: Path) -> Optional[Path]:
+    """
+    Find README file in the repository.
+
+    Args:
+        repo_path: Path to Git repository
+
+    Returns:
+        Path to README file, or None if not found
+    """
+    # Common README file names (case-insensitive)
+    readme_names = [
+        "README.md",
+        "readme.md",
+        "Readme.md",
+        "README.MD",
+        "README",
+        "readme",
+        "README.txt",
+        "readme.txt",
+        "README.rst",
+        "readme.rst",
+    ]
+
+    for name in readme_names:
+        readme_path = repo_path / name
+        if readme_path.exists():
+            return readme_path
+
+    return None
+
+
+def find_changelog_heading(readme_path: Path) -> Optional[str]:
+    """
+    Find existing changelog heading in README file.
+
+    Args:
+        readme_path: Path to README file
+
+    Returns:
+        Changelog heading marker if found, None otherwise
+    """
+    if not readme_path.exists():
+        return None
+
+    try:
+        content = readme_path.read_text(encoding="utf-8")
+    except Exception:
+        return None
+
+    # Common changelog heading patterns (case-insensitive)
+    changelog_patterns = [
+        r'^(#{1,6}\s*更新日志)',
+        r'^(#{1,6}\s*Changelog)',
+        r'^(#{1,6}\s*CHANGELOG)',
+        r'^(#{1,6}\s*Change Log)',
+        r'^(#{1,6}\s*变更日志)',
+        r'^(#{1,6}\s*版本历史)',
+        r'^(#{1,6}\s*Version History)',
+        r'^(#{1,6}\s*Release Notes)',
+        r'^(#{1,6}\s*发布说明)',
+    ]
+
+    for line in content.split('\n'):
+        line = line.strip()
+        for pattern in changelog_patterns:
+            match = re.match(pattern, line, re.IGNORECASE)
+            if match:
+                return match.group(1)
+
+    return None
+
+
+def auto_detect_paths() -> Tuple[Optional[Path], Optional[Path]]:
+    """
+    Auto-detect Git repository and README file paths.
+
+    Returns:
+        Tuple of (repo_path, readme_path), either can be None if not found
+    """
+    repo_path = find_git_repo()
+    if not repo_path:
+        return None, None
+
+    readme_path = find_readme_file(repo_path)
+    return repo_path, readme_path

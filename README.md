@@ -77,14 +77,18 @@ MCP Doc Updater 主要设计为MCP工具，可以在Claude Desktop或其他支�
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| `repo_path` | string | 必需 | Git仓库路径 |
-| `readme_path` | string | 必需 | README文件路径（相对或绝对） |
+| `repo_path` | string | 自动检测 | Git仓库路径（可选，自动检测当前目录） |
+| `readme_path` | string | 自动检测 | README文件路径（可选，自动检测） |
 | `comparison_mode` | string | `latest_vs_previous` | 比较模式 |
 | `heading_marker` | string | `## 更新日志` | Markdown标题标记 |
 | `filter_trivial` | boolean | `true` | 是否过滤琐碎变化 |
 | `use_smart_summary` | boolean | `true` | 是否使用智能摘要 |
 | `tag_name` | string | `null` | Tag名称（用于latest_vs_tag模式） |
 | `token_budget` | integer | `null` | Token预算限制 |
+
+**自动检测功能：**
+- 如果不提供 `repo_path`，工具会自动向上搜索 `.git` 目录来定位仓库
+- 如果不提供 `readme_path`，工具会自动在仓库根目录查找 README 文件（支持多种命名格式）
 
 #### 比较模式
 
@@ -94,7 +98,22 @@ MCP Doc Updater 主要设计为MCP工具，可以在Claude Desktop或其他支�
 
 ### 使用示例
 
-#### 示例1: 基本使用
+#### 示例1: 基本使用（自动检测）
+
+在 Claude Desktop 中直接调用，无需提供任何参数：
+
+```
+请使用update_readme_changelog工具更新文档
+```
+
+或者使用空的 JSON：
+```json
+{}
+```
+
+工具会自动检测当前 Git 仓库和 README 文件。
+
+#### 示例2: 手动指定路径
 
 ```json
 {
@@ -103,27 +122,23 @@ MCP Doc Updater 主要设计为MCP工具，可以在Claude Desktop或其他支�
 }
 ```
 
-#### 示例2: 自定义标题
+#### 示例3: 自定义标题
 
 ```json
 {
-  "repo_path": "/path/to/your/repo",
-  "readme_path": "README.md",
   "heading_marker": "## 版本历史"
 }
 ```
 
-#### 示例3: 比较工作区变化
+#### 示例4: 比较工作区变化
 
 ```json
 {
-  "repo_path": "/path/to/your/repo",
-  "readme_path": "README.md",
   "comparison_mode": "working_tree_vs_head"
 }
 ```
 
-#### 示例4: 限制Token使用
+#### 示例5: 限制Token使用
 
 ```json
 {
