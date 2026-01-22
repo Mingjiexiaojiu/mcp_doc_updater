@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "doc-updater": {
+      "command": "python",
+      "args": ["-m", "mcp_doc_updater.server"],
+      "cwd": "E:\\Develop\\Project\\Demoidea\\mcp_doc_updater"
+    }
+  }
+}
