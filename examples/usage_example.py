@@ -125,6 +125,7 @@ def update_changelog_example():
     updater = MarkdownUpdater(markdown_config)
     success, message = updater.update_readme(readme_path, entry)
 
+
     if success:
         print(f"✓ 成功更新 README: {message}")
     else:

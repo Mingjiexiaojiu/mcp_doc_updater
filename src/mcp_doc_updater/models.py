@@ -1,4 +1,4 @@
-"""Data models for MCP Doc Updater."""
+"""MCP Doc Updater 的数据模型。"""
 
 from datetime import datetime
 from enum import Enum
@@ -7,22 +7,22 @@ from pydantic import BaseModel, Field
 
 
 class ComparisonMode(str, Enum):
-    """Git comparison modes."""
+    """Git 比较模式。"""
     LATEST_VS_PREVIOUS = "latest_vs_previous"
     WORKING_TREE_VS_HEAD = "working_tree_vs_head"
     LATEST_VS_TAG = "latest_vs_tag"
 
 
 class ChangeImportance(str, Enum):
-    """Importance level of code changes."""
-    CRITICAL = "critical"      # New functions, classes, major logic changes
-    IMPORTANT = "important"    # Significant modifications, bug fixes
-    NORMAL = "normal"          # Regular changes
-    TRIVIAL = "trivial"        # Whitespace, comments, formatting
+    """代码变化的重要性级别。"""
+    CRITICAL = "critical"      # 新函数、类、重大逻辑变化
+    IMPORTANT = "important"    # 重要修改、bug 修复
+    NORMAL = "normal"          # 常规变化
+    TRIVIAL = "trivial"        # 空白、注释、格式化
 
 
 class ChangeType(str, Enum):
-    """Type of code change."""
+    """代码变化的类型。"""
     ADDED = "added"
     MODIFIED = "modified"
     DELETED = "deleted"
@@ -30,7 +30,7 @@ class ChangeType(str, Enum):
 
 
 class CodeChange(BaseModel):
-    """Represents a single code change."""
+    """表示单个代码变化。"""
     file_path: str
     change_type: ChangeType
     importance: ChangeImportance
@@ -38,7 +38,7 @@ class CodeChange(BaseModel):
     summary: Optional[str] = None
     line_count: int = 0
 
-    # Extracted semantic information
+    # 提取的语义信息
     functions_added: List[str] = Field(default_factory=list)
     functions_modified: List[str] = Field(default_factory=list)
     functions_deleted: List[str] = Field(default_factory=list)
@@ -47,7 +47,7 @@ class CodeChange(BaseModel):
 
 
 class GitAnalysisResult(BaseModel):
-    """Result of Git analysis."""
+    """Git 分析的结果。"""
     comparison_mode: ComparisonMode
     changes: List[CodeChange]
     total_files_changed: int
@@ -61,24 +61,24 @@ class GitAnalysisResult(BaseModel):
 
 
 class ChangelogEntry(BaseModel):
-    """A single changelog entry."""
+    """单个更新日志条目。"""
     date: datetime
     content: str
     commit_hash: Optional[str] = None
     author: Optional[str] = None
 
     def format_chinese_date(self) -> str:
-        """Format date in Chinese format: 2026年01月22日"""
+        """格式化日期为中文格式：2026年01月22日"""
         return self.date.strftime("%Y年%m月%d日")
 
     def to_markdown(self) -> str:
-        """Convert to markdown format."""
+        """转换为 markdown 格式。"""
         date_str = self.format_chinese_date()
         return f"{date_str}  {self.content}"
 
 
 class MarkdownUpdateConfig(BaseModel):
-    """Configuration for markdown updates."""
+    """Markdown 更新的配置。"""
     heading_marker: str = "## 更新日志"
     max_entries: Optional[int] = None
     insert_at_top: bool = True
@@ -86,7 +86,7 @@ class MarkdownUpdateConfig(BaseModel):
 
 
 class FilterConfig(BaseModel):
-    """Configuration for diff filtering."""
+    """差异过滤的配置。"""
     ignore_whitespace: bool = True
     ignore_comments: bool = False
     ignore_imports: bool = False
@@ -94,7 +94,7 @@ class FilterConfig(BaseModel):
     max_context_lines: int = 3
     token_budget: Optional[int] = None
 
-    # File patterns to ignore
+    # 要忽略的文件模式
     ignore_patterns: List[str] = Field(default_factory=lambda: [
         "*.lock",
         "*.log",

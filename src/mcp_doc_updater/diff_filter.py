@@ -1,4 +1,4 @@
-"""Smart diff filtering to reduce token usage while preserving important changes."""
+"""智能差异过滤，在保留重要变化的同时减少令牌使用量。"""
 
 import re
 from typing import List, Tuple
@@ -12,54 +12,53 @@ from .utils import (
     count_tokens_estimate,
 )
 
-
 class DiffFilter:
-    """Filters and processes diffs to extract important changes."""
+    """过滤和处理差异以提取重要变化。"""
 
     def __init__(self, config: FilterConfig):
         """
-        Initialize diff filter.
+        初始化差异过滤器。
 
         Args:
-            config: Filter configuration
+            config: 过滤器配置
         """
         self.config = config
 
     def filter_changes(self, changes: List[CodeChange]) -> List[CodeChange]:
         """
-        Filter and process changes based on configuration.
+        根据配置过滤和处理变化。
 
         Args:
-            changes: List of code changes
+            changes: 代码变化列表
 
         Returns:
-            Filtered list of code changes
+            过滤后的代码变化列表
         """
         filtered = []
 
         for change in changes:
-            # Assess importance
+            # 评估重要性
             self._assess_importance(change)
 
-            # Skip if below minimum importance
+            # 如果低于最小重要性则跳过
             if self._importance_level(change.importance) < self._importance_level(self.config.min_importance):
                 continue
 
-            # Extract semantic information
+            # 提取语义信息
             self._extract_semantic_info(change)
 
-            # Compress diff text
+            # 压缩差异文本
             change.diff_text = self._compress_diff(change.diff_text)
 
-            # Generate summary
+            # 生成摘要
             change.summary = self._generate_change_summary(change)
 
             filtered.append(change)
 
-        # Sort by importance
+        # 按重要性排序
         filtered.sort(key=lambda c: self._importance_level(c.importance), reverse=True)
 
-        # Apply token budget if specified
+        # 如果指定了令牌预算则应用
         if self.config.token_budget:
             filtered = self._apply_token_budget(filtered, self.config.token_budget)
 
@@ -67,10 +66,10 @@ class DiffFilter:
 
     def _assess_importance(self, change: CodeChange) -> None:
         """
-        Assess the importance of a code change.
+        评估代码变化的重要性。
 
         Args:
-            change: CodeChange to assess (modified in place)
+            change: 要评估的 CodeChange（就地修改）
         """
         diff_lines = change.diff_text.split("\n")
         importance_score = 0
@@ -79,13 +78,13 @@ class DiffFilter:
             if not line.startswith(("+", "-")):
                 continue
 
-            # Remove the +/- prefix
+            # 移除 +/- 前缀
             content = line[1:].strip()
 
             if not content:
                 continue
 
-            # Skip trivial changes
+            # 跳过琐碎的变化
             if self.config.ignore_whitespace and is_whitespace_only(content):
                 continue
 
@@ -95,11 +94,11 @@ class DiffFilter:
             if self.config.ignore_imports and is_import_line(content):
                 continue
 
-            # Assess line importance
+            # 评估行的重要性
             line_importance = self._assess_line_importance(content)
             importance_score += line_importance
 
-        # Determine overall importance
+        # 确定整体重要性
         if importance_score >= 10:
             change.importance = ChangeImportance.CRITICAL
         elif importance_score >= 5:
@@ -111,27 +110,27 @@ class DiffFilter:
 
     def _assess_line_importance(self, line: str) -> int:
         """
-        Assess the importance of a single line.
+        评估单行的重要性。
 
         Args:
-            line: Line to assess
+            line: 要评估的行
 
         Returns:
-            Importance score (higher = more important)
+            重要性分数（越高越重要）
         """
-        score = 1  # Base score
+        score = 1  # 基础分数
 
-        # Critical patterns
+        # 关键模式
         critical_patterns = [
-            r'\bdef\s+\w+\s*\(',           # Function definition
-            r'\bclass\s+\w+',              # Class definition
-            r'\basync\s+def\s+\w+',        # Async function
-            r'\breturn\s+',                # Return statement
-            r'\braise\s+',                 # Exception raising
+            r'\bdef\s+\w+\s*\(',           # 函数定义
+            r'\bclass\s+\w+',              # 类定义
+            r'\basync\s+def\s+\w+',        # 异步函数
+            r'\breturn\s+',                # 返回语句
+            r'\braise\s+',                 # 抛出异常
             r'\bthrow\s+',                 # JavaScript throw
-            r'\bexport\s+',                # Export statement
-            r'\bpublic\s+',                # Public modifier
-            r'\bprivate\s+',               # Private modifier
+            r'\bexport\s+',                # 导出语句
+            r'\bpublic\s+',                # 公共修饰符
+            r'\bprivate\s+',               # 私有修饰符
         ]
 
         for pattern in critical_patterns:
@@ -139,15 +138,15 @@ class DiffFilter:
                 score += 3
                 break
 
-        # Important patterns
+        # 重要模式
         important_patterns = [
-            r'\bif\s+',                    # Conditional
-            r'\bfor\s+',                   # Loop
-            r'\bwhile\s+',                 # Loop
-            r'\btry\s*:',                  # Try block
-            r'\bcatch\s*\(',               # Catch block
-            r'\bawait\s+',                 # Await
-            r'=\s*\w+\(',                  # Function call assignment
+            r'\bif\s+',                    # 条件语句
+            r'\bfor\s+',                   # 循环
+            r'\bwhile\s+',                 # 循环
+            r'\btry\s*:',                  # try 块
+            r'\bcatch\s*\(',               # catch 块
+            r'\bawait\s+',                 # await
+            r'=\s*\w+\(',                  # 函数调用赋值
         ]
 
         for pattern in important_patterns:
@@ -155,13 +154,13 @@ class DiffFilter:
                 score += 2
                 break
 
-        # Deduct for trivial patterns
+        # 扣除琐碎模式的分数
         trivial_patterns = [
-            r'^\s*$',                      # Empty line
-            r'^\s*#',                      # Comment
-            r'^\s*//',                     # Comment
-            r'^\s*console\.log',           # Debug logging
-            r'^\s*print\(',                # Debug print
+            r'^\s*$',                      # 空行
+            r'^\s*#',                      # 注释
+            r'^\s*//',                     # 注释
+            r'^\s*console\.log',           # 调试日志
+            r'^\s*print\(',                # 调试打印
         ]
 
         for pattern in trivial_patterns:
@@ -173,10 +172,10 @@ class DiffFilter:
 
     def _extract_semantic_info(self, change: CodeChange) -> None:
         """
-        Extract semantic information from diff.
+        从差异中提取语义信息。
 
         Args:
-            change: CodeChange to analyze (modified in place)
+            change: 要分析的 CodeChange（就地修改）
         """
         diff_lines = change.diff_text.split("\n")
 
@@ -187,7 +186,7 @@ class DiffFilter:
             prefix = line[0]
             content = line[1:]
 
-            # Extract function names
+            # 提取函数名
             func_name = extract_function_name(content)
             if func_name:
                 if prefix == "+":
@@ -195,7 +194,7 @@ class DiffFilter:
                 elif prefix == "-":
                     change.functions_deleted.append(func_name)
 
-            # Extract class names
+            # 提取类名
             class_name = extract_class_name(content)
             if class_name:
                 if prefix == "+":
@@ -203,13 +202,13 @@ class DiffFilter:
 
     def _compress_diff(self, diff_text: str) -> str:
         """
-        Compress diff text by removing unnecessary context.
+        通过删除不必要的上下文来压缩差异文本。
 
         Args:
-            diff_text: Original diff text
+            diff_text: 原始差异文本
 
         Returns:
-            Compressed diff text
+            压缩后的差异文本
         """
         lines = diff_text.split("\n")
         compressed_lines = []
@@ -217,24 +216,24 @@ class DiffFilter:
         last_change_index = -1
 
         for i, line in enumerate(lines):
-            # Keep header lines
+            # 保留头部行
             if line.startswith(("diff --git", "index", "---", "+++")):
                 compressed_lines.append(line)
                 continue
 
-            # Keep hunk headers
+            # 保留块头部
             if line.startswith("@@"):
                 compressed_lines.append(line)
                 context_buffer = []
                 continue
 
-            # Check if this is a change line
+            # 检查这是否是变化行
             is_change = line.startswith(("+", "-"))
 
             if is_change:
-                # Add buffered context before this change
+                # 在此变化之前添加缓冲的上下文
                 if context_buffer and (last_change_index == -1 or i - last_change_index > self.config.max_context_lines):
-                    # Only add last N context lines
+                    # 只添加最后 N 行上下文
                     compressed_lines.extend(context_buffer[-self.config.max_context_lines:])
                 else:
                     compressed_lines.extend(context_buffer)
@@ -243,15 +242,15 @@ class DiffFilter:
                 compressed_lines.append(line)
                 last_change_index = i
             else:
-                # This is a context line
+                # 这是上下文行
                 if last_change_index != -1 and i - last_change_index <= self.config.max_context_lines:
-                    # Within context window of last change
+                    # 在最后一次变化的上下文窗口内
                     compressed_lines.append(line)
                 else:
-                    # Buffer this context line
+                    # 缓冲此上下文行
                     context_buffer.append(line)
 
-                    # If buffer is too large, clear it
+                    # 如果缓冲区太大，清空它
                     if len(context_buffer) > self.config.max_context_lines * 2:
                         context_buffer = []
 
@@ -259,20 +258,20 @@ class DiffFilter:
 
     def _generate_change_summary(self, change: CodeChange) -> str:
         """
-        Generate a human-readable summary of the change.
+        生成变化的可读摘要。
 
         Args:
-            change: CodeChange to summarize
+            change: 要总结的 CodeChange
 
         Returns:
-            Summary string
+            摘要字符串
         """
         parts = []
 
-        # File and change type
+        # 文件和变化类型
         parts.append(f"{change.change_type.value}: {change.file_path}")
 
-        # Functions
+        # 函数
         if change.functions_added:
             parts.append(f"新增函数: {', '.join(change.functions_added)}")
         if change.functions_modified:
@@ -280,13 +279,13 @@ class DiffFilter:
         if change.functions_deleted:
             parts.append(f"删除函数: {', '.join(change.functions_deleted)}")
 
-        # Classes
+        # 类
         if change.classes_added:
             parts.append(f"新增类: {', '.join(change.classes_added)}")
         if change.classes_modified:
             parts.append(f"修改类: {', '.join(change.classes_modified)}")
 
-        # Line count
+        # 行数
         if change.line_count > 0:
             parts.append(f"({change.line_count} 行变化)")
 
@@ -294,14 +293,14 @@ class DiffFilter:
 
     def _apply_token_budget(self, changes: List[CodeChange], budget: int) -> List[CodeChange]:
         """
-        Apply token budget by truncating changes list.
+        通过截断变化列表来应用令牌预算。
 
         Args:
-            changes: List of changes (should be sorted by importance)
-            budget: Token budget
+            changes: 变化列表（应按重要性排序）
+            budget: 令牌预算
 
         Returns:
-            Truncated list of changes
+            截断后的变化列表
         """
         total_tokens = 0
         result = []
@@ -310,11 +309,11 @@ class DiffFilter:
             change_tokens = count_tokens_estimate(change.diff_text)
 
             if total_tokens + change_tokens > budget:
-                # Try to include at least the summary
+                # 尝试至少包含摘要
                 summary_tokens = count_tokens_estimate(change.summary or "")
                 if total_tokens + summary_tokens <= budget:
-                    # Replace diff with summary only
-                    change.diff_text = f"(Summary only - exceeded token budget)\n{change.summary}"
+                    # 仅用摘要替换差异
+                    change.diff_text = f"(仅摘要 - 超出令牌预算)\n{change.summary}"
                     result.append(change)
                     total_tokens += summary_tokens
                 break
@@ -325,7 +324,7 @@ class DiffFilter:
         return result
 
     def _importance_level(self, importance: ChangeImportance) -> int:
-        """Convert importance enum to numeric level."""
+        """将重要性枚举转换为数字级别。"""
         levels = {
             ChangeImportance.CRITICAL: 4,
             ChangeImportance.IMPORTANT: 3,
@@ -336,23 +335,23 @@ class DiffFilter:
 
 
 class TokenOptimizer:
-    """Optimizes token usage for changes."""
+    """优化变化的令牌使用量。"""
 
     @staticmethod
     def create_compact_summary(changes: List[CodeChange]) -> str:
         """
-        Create a compact summary of all changes.
+        创建所有变化的紧凑摘要。
 
         Args:
-            changes: List of code changes
+            changes: 代码变化列表
 
         Returns:
-            Compact summary string
+            紧凑摘要字符串
         """
         if not changes:
             return "无变化"
 
-        # Group by change type
+        # 按变化类型分组
         by_type = {}
         for change in changes:
             change_type = change.change_type.value
@@ -362,7 +361,7 @@ class TokenOptimizer:
 
         summary_parts = []
 
-        # Summarize each type
+        # 总结每种类型
         for change_type, type_changes in by_type.items():
             files = [c.file_path for c in type_changes]
             if len(files) <= 3:

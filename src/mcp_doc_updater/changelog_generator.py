@@ -1,4 +1,4 @@
-"""Changelog generation from Git analysis results."""
+"""从 Git 分析结果生成更新日志。"""
 
 from datetime import datetime
 from typing import List, Optional
@@ -11,7 +11,7 @@ from .models import (
 
 
 class ChangelogGenerator:
-    """Generates changelog entries from Git analysis."""
+    """从 Git 分析生成更新日志条目。"""
 
     def generate_from_commit(
         self,
@@ -21,19 +21,19 @@ class ChangelogGenerator:
         timestamp: Optional[datetime] = None,
     ) -> ChangelogEntry:
         """
-        Generate changelog entry from commit message.
+        从提交消息生成更新日志条目。
 
         Args:
-            commit_message: Commit message
-            commit_hash: Optional commit hash
-            author: Optional author name
-            timestamp: Optional timestamp
+            commit_message: 提交消息
+            commit_hash: 可选的提交哈希
+            author: 可选的作者名称
+            timestamp: 可选的时间戳
 
         Returns:
             ChangelogEntry
         """
-        # Clean up commit message
-        content = commit_message.strip().split("\n")[0]  # Use first line only
+        # 清理提交消息
+        content = commit_message.strip().split("\n")[0]  # 仅使用第一行
 
         return ChangelogEntry(
             date=timestamp or datetime.now(),
@@ -48,11 +48,11 @@ class ChangelogGenerator:
         use_smart_summary: bool = True,
     ) -> ChangelogEntry:
         """
-        Generate changelog entry from Git analysis result.
+        从 Git 分析结果生成更新日志条目。
 
         Args:
             analysis: GitAnalysisResult
-            use_smart_summary: Whether to generate smart summary
+            use_smart_summary: 是否生成智能摘要
 
         Returns:
             ChangelogEntry
@@ -60,7 +60,7 @@ class ChangelogGenerator:
         if use_smart_summary and analysis.changes:
             content = self._generate_smart_summary(analysis.changes)
         else:
-            # Fall back to commit message or basic summary
+            # 回退到提交消息或基本摘要
             content = analysis.commit_message or analysis.summary
 
         return ChangelogEntry(
@@ -72,18 +72,18 @@ class ChangelogGenerator:
 
     def _generate_smart_summary(self, changes: List[CodeChange]) -> str:
         """
-        Generate intelligent summary from code changes.
+        从代码变更生成智能摘要。
 
         Args:
-            changes: List of code changes
+            changes: 代码变更列表
 
         Returns:
-            Smart summary string in Chinese
+            中文智能摘要字符串
         """
         if not changes:
             return "无代码变化"
 
-        # Categorize changes
+        # 对变更进行分类
         added_files = []
         modified_files = []
         deleted_files = []
@@ -103,10 +103,10 @@ class ChangelogGenerator:
             functions_modified.extend(change.functions_modified)
             classes_added.extend(change.classes_added)
 
-        # Build summary parts
+        # 构建摘要部分
         summary_parts = []
 
-        # New features (added files/classes/functions)
+        # 新功能（新增的文件/类/函数）
         if added_files or classes_added or functions_added:
             feature_parts = []
 
@@ -130,7 +130,7 @@ class ChangelogGenerator:
             if feature_parts:
                 summary_parts.append("，".join(feature_parts))
 
-        # Modifications
+        # 修改
         if modified_files or functions_modified:
             mod_parts = []
 
@@ -142,7 +142,7 @@ class ChangelogGenerator:
                     mod_parts.append(f"更新{len(functions_modified)}个函数")
 
             if modified_files and not functions_modified:
-                # Only mention files if we didn't already mention functions
+                # 如果我们还没有提到函数，则只提到文件
                 if len(modified_files) <= 2:
                     file_list = "、".join([self._get_file_name(f) for f in modified_files])
                     mod_parts.append(f"更新文件: {file_list}")
@@ -152,7 +152,7 @@ class ChangelogGenerator:
             if mod_parts:
                 summary_parts.append("，".join(mod_parts))
 
-        # Deletions
+        # 删除
         if deleted_files:
             if len(deleted_files) <= 2:
                 file_list = "、".join([self._get_file_name(f) for f in deleted_files])
@@ -160,7 +160,7 @@ class ChangelogGenerator:
             else:
                 summary_parts.append(f"删除{len(deleted_files)}个文件")
 
-        # Combine all parts
+        # 组合所有部分
         if summary_parts:
             return "；".join(summary_parts)
         else:
@@ -168,13 +168,13 @@ class ChangelogGenerator:
 
     def _get_file_name(self, file_path: str) -> str:
         """
-        Extract file name from path.
+        从路径中提取文件名。
 
         Args:
-            file_path: Full file path
+            file_path: 完整文件路径
 
         Returns:
-            File name only
+            仅文件名
         """
         return file_path.split("/")[-1]
 
@@ -184,14 +184,14 @@ class ChangelogGenerator:
         use_smart_summary: bool = True,
     ) -> List[ChangelogEntry]:
         """
-        Generate multiple changelog entries.
+        生成多个更新日志条目。
 
         Args:
-            analyses: List of GitAnalysisResult
-            use_smart_summary: Whether to use smart summaries
+            analyses: GitAnalysisResult 列表
+            use_smart_summary: 是否使用智能摘要
 
         Returns:
-            List of ChangelogEntry
+            ChangelogEntry 列表
         """
         entries = []
 
@@ -203,13 +203,13 @@ class ChangelogGenerator:
 
     def format_entries(self, entries: List[ChangelogEntry]) -> str:
         """
-        Format multiple entries as markdown.
+        将多个条目格式化为 Markdown。
 
         Args:
-            entries: List of ChangelogEntry
+            entries: ChangelogEntry 列表
 
         Returns:
-            Formatted markdown string
+            格式化的 Markdown 字符串
         """
         lines = []
 

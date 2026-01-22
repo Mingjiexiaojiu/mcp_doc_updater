@@ -1,4 +1,4 @@
-"""Markdown document updater for inserting changelog entries."""
+"""用于插入更新日志条目的 Markdown 文档更新器。"""
 
 import re
 from pathlib import Path
@@ -7,14 +7,14 @@ from .models import ChangelogEntry, MarkdownUpdateConfig
 
 
 class MarkdownUpdater:
-    """Updates markdown documents with changelog entries."""
+    """使用更新日志条目更新 Markdown 文档。"""
 
     def __init__(self, config: Optional[MarkdownUpdateConfig] = None):
         """
-        Initialize markdown updater.
+        初始化 Markdown 更新器。
 
         Args:
-            config: Optional configuration
+            config: 可选配置
         """
         self.config = config or MarkdownUpdateConfig()
 
@@ -24,41 +24,41 @@ class MarkdownUpdater:
         entry: ChangelogEntry,
     ) -> Tuple[bool, str]:
         """
-        Update README file with new changelog entry.
+        使用新的更新日志条目更新 README 文件。
 
         Args:
-            file_path: Path to README file
-            entry: Changelog entry to insert
+            file_path: README 文件路径
+            entry: 要插入的更新日志条目
 
         Returns:
-            Tuple of (success, message)
+            (成功标志, 消息) 元组
         """
         path = Path(file_path)
 
-        # Check if file exists
+        # 检查文件是否存在
         if not path.exists():
             return False, f"File not found: {file_path}"
 
-        # Read current content
+        # 读取当前内容
         try:
             content = path.read_text(encoding="utf-8")
         except Exception as e:
             return False, f"Failed to read file: {e}"
 
-        # Find heading position
+        # 查找标题位置
         position = self.find_heading_position(content, self.config.heading_marker)
 
         if position == -1:
             return False, f"Heading not found: {self.config.heading_marker}"
 
-        # Insert entry
+        # 插入条目
         new_content = self.insert_entry(content, position, entry)
 
-        # Apply max entries limit if configured
+        # 如果配置了最大条目数，则应用限制
         if self.config.max_entries:
             new_content = self._limit_entries(new_content, position)
 
-        # Write back to file
+        # 写回文件
         try:
             path.write_text(new_content, encoding="utf-8")
             return True, f"Successfully updated {file_path}"
@@ -67,27 +67,27 @@ class MarkdownUpdater:
 
     def find_heading_position(self, content: str, heading: str) -> int:
         """
-        Find the position of a markdown heading.
+        查找 Markdown 标题的位置。
 
         Args:
-            content: Markdown content
-            heading: Heading to find (e.g., "## 更新日志")
+            content: Markdown 内容
+            heading: 要查找的标题（例如 "## 更新日志"）
 
         Returns:
-            Character position after the heading, or -1 if not found
+            标题后的字符位置，如果未找到则返回 -1
         """
-        # Escape special regex characters in heading
+        # 转义标题中的特殊正则表达式字符
         escaped_heading = re.escape(heading)
 
-        # Pattern to match the heading (with optional trailing whitespace)
+        # 匹配标题的模式（带可选的尾随空白）
         pattern = rf'^{escaped_heading}\s*$'
 
         lines = content.split("\n")
 
         for i, line in enumerate(lines):
             if re.match(pattern, line.strip()):
-                # Found the heading, return position after this line
-                position = sum(len(l) + 1 for l in lines[:i+1])  # +1 for newline
+                # 找到标题，返回此行之后的位置
+                position = sum(len(l) + 1 for l in lines[:i+1])  # +1 表示换行符
                 return position
 
         return -1
@@ -99,54 +99,54 @@ class MarkdownUpdater:
         entry: ChangelogEntry,
     ) -> str:
         """
-        Insert changelog entry at specified position.
+        在指定位置插入更新日志条目。
 
         Args:
-            content: Original content
-            position: Position to insert at
-            entry: Changelog entry
+            content: 原始内容
+            position: 插入位置
+            entry: 更新日志条目
 
         Returns:
-            Updated content
+            更新后的内容
         """
-        # Format entry as markdown
+        # 将条目格式化为 Markdown
         entry_text = entry.to_markdown()
 
-        # Determine insertion text
+        # 确定插入文本
         if self.config.insert_at_top:
-            # Insert at the top (right after heading)
-            # Add blank line before entry if content doesn't start with one
+            # 在顶部插入（紧接标题之后）
+            # 如果内容不以空行开头，则在条目前添加空行
             if position < len(content) and content[position] != "\n":
                 insertion = f"\n{entry_text}\n"
             else:
                 insertion = f"{entry_text}\n"
         else:
-            # Insert at the bottom (before next heading or end)
+            # 在底部插入（在下一个标题或末尾之前）
             insertion = f"{entry_text}\n"
 
-        # Insert the entry
+        # 插入条目
         new_content = content[:position] + insertion + content[position:]
 
         return new_content
 
     def _limit_entries(self, content: str, heading_position: int) -> str:
         """
-        Limit the number of changelog entries.
+        限制更新日志条目的数量。
 
         Args:
-            content: Content with entries
-            heading_position: Position of the changelog heading
+            content: 包含条目的内容
+            heading_position: 更新日志标题的位置
 
         Returns:
-            Content with limited entries
+            限制条目后的内容
         """
         if not self.config.max_entries:
             return content
 
-        # Find all entries after the heading
+        # 查找标题后的所有条目
         lines = content[heading_position:].split("\n")
 
-        # Pattern to match changelog entries (date format: YYYY年MM月DD日)
+        # 匹配更新日志条目的模式（日期格式：YYYY年MM月DD日）
         entry_pattern = r'^\d{4}年\d{2}月\d{2}日\s+'
 
         entry_lines = []
@@ -159,15 +159,15 @@ class MarkdownUpdater:
                 if entry_count <= self.config.max_entries:
                     entry_lines.append(line)
             else:
-                # Check if we've passed all entries
+                # 检查是否已经过了所有条目
                 if entry_count > 0 and not re.match(entry_pattern, line):
-                    # This is content after entries
+                    # 这是条目之后的内容
                     other_lines.append(line)
                 elif entry_count == 0:
-                    # This is content before first entry
+                    # 这是第一个条目之前的内容
                     entry_lines.append(line)
 
-        # Reconstruct content
+        # 重构内容
         new_section = "\n".join(entry_lines)
         if other_lines:
             new_section += "\n" + "\n".join(other_lines)
@@ -176,13 +176,13 @@ class MarkdownUpdater:
 
     def create_changelog_section(self, heading: Optional[str] = None) -> str:
         """
-        Create a new changelog section.
+        创建新的更新日志部分。
 
         Args:
-            heading: Optional custom heading
+            heading: 可选的自定义标题
 
         Returns:
-            Markdown text for changelog section
+            更新日志部分的 Markdown 文本
         """
         heading = heading or self.config.heading_marker
         return f"{heading}\n\n"
@@ -193,31 +193,31 @@ class MarkdownUpdater:
         entry: ChangelogEntry,
     ) -> Tuple[bool, str]:
         """
-        Append changelog entry to end of file.
+        将更新日志条目追加到文件末尾。
 
         Args:
-            file_path: Path to file
-            entry: Changelog entry
+            file_path: 文件路径
+            entry: 更新日志条目
 
         Returns:
-            Tuple of (success, message)
+            (成功标志, 消息) 元组
         """
         path = Path(file_path)
 
         try:
-            # Read existing content
+            # 读取现有内容
             if path.exists():
                 content = path.read_text(encoding="utf-8")
             else:
                 content = ""
 
-            # Append entry
+            # 追加条目
             if content and not content.endswith("\n"):
                 content += "\n"
 
             content += entry.to_markdown() + "\n"
 
-            # Write back
+            # 写回
             path.write_text(content, encoding="utf-8")
 
             return True, f"Successfully appended to {file_path}"
@@ -227,19 +227,19 @@ class MarkdownUpdater:
 
     def validate_markdown(self, content: str) -> Tuple[bool, str]:
         """
-        Validate markdown content.
+        验证 Markdown 内容。
 
         Args:
-            content: Markdown content
+            content: Markdown 内容
 
         Returns:
-            Tuple of (is_valid, message)
+            (是否有效, 消息) 元组
         """
-        # Check for basic markdown structure
+        # 检查基本的 Markdown 结构
         if not content.strip():
             return False, "Content is empty"
 
-        # Check for at least one heading
+        # 检查至少有一个标题
         if not re.search(r'^#+\s+', content, re.MULTILINE):
             return False, "No headings found"
 
