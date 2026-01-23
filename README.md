@@ -1,14 +1,14 @@
 # MCP Doc Updater
 
-一个基于MCP (Model Context Protocol) 的智能文档更新工具，能够自动分析Git代码变化并在README中生成版本更新日志。
+一个基于MCP (Model Context Protocol) 的智能文档更新工具，能够自动分析Git代码变化并生成用于AI的提示词，让AI帮你生成更新日志。
 
 ## 特性
 
 - 🔍 **智能代码分析**: 自动分析Git仓库的代码变化，识别关键修改
 - 🎯 **智能过滤**: 三层过滤机制，过滤掉空白、注释等琐碎变化，只保留重要修改
 - 📊 **Token优化**: 智能压缩diff内容，减少token使用，提高效率
-- 🇨🇳 **中文日志**: 自动生成中文格式的更新日志（格式：2026年01月22日  内容）
-- 📝 **Markdown集成**: 自动在README的指定标题下插入更新日志
+- 🤖 **AI提示词生成**: 生成结构化的提示词，包含代码变化摘要、详细信息和diff内容
+- 🌐 **多语言支持**: 支持中文和英文提示词生成
 - 🔄 **多种比较模式**: 支持最新commit对比、工作区对比、tag对比等多种模式
 - 🎨 **语义识别**: 自动识别函数、类的新增、修改和删除
 
@@ -68,27 +68,29 @@ MCP Doc Updater 主要设计为MCP工具，可以在Claude Desktop或其他支�
 配置完成后，在Claude Desktop中可以直接调用工具：
 
 ```
-请使用update_readme_changelog工具更新我的项目文档
+请使用generate_changelog_prompt工具分析我的代码变化
 ```
+
+工具会返回一个结构化的提示词，你可以将这个提示词发送给AI来生成更新日志内容。
 
 ### 工具参数
 
-`update_readme_changelog` 工具支持以下参数：
+`generate_changelog_prompt` 工具支持以下参数：
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `repo_path` | string | 自动检测 | Git仓库路径（可选，自动检测当前目录） |
-| `readme_path` | string | 自动检测 | README文件路径（可选，自动检测） |
-| `comparison_mode` | string | `latest_vs_previous` | 比较模式 |
-| `heading_marker` | string | `## 更新日志` | Markdown标题标记 |
+| `comparison_mode` | string | 自动检测 | 比较模式 |
 | `filter_trivial` | boolean | `true` | 是否过滤琐碎变化 |
-| `use_smart_summary` | boolean | `true` | 是否使用智能摘要 |
+| `include_diff` | boolean | `true` | 是否在提示词中包含diff内容 |
+| `language` | string | `zh` | 提示词语言（'zh'或'en'） |
 | `tag_name` | string | `null` | Tag名称（用于latest_vs_tag模式） |
 | `token_budget` | integer | `null` | Token预算限制 |
+| `max_diff_lines` | integer | `50` | 每个文件包含的最大diff行数 |
 
 **自动检测功能：**
 - 如果不提供 `repo_path`，工具会自动向上搜索 `.git` 目录来定位仓库
-- 如果不提供 `readme_path`，工具会自动在仓库根目录查找 README 文件（支持多种命名格式）
+- 如果不提供 `comparison_mode`，工具会根据工作区状态自动选择合适的比较模式
 
 #### 比较模式
 
@@ -103,7 +105,7 @@ MCP Doc Updater 主要设计为MCP工具，可以在Claude Desktop或其他支�
 在 Claude Desktop 中直接调用，无需提供任何参数：
 
 ```
-请使用update_readme_changelog工具更新文档
+请使用generate_changelog_prompt工具分析代码变化
 ```
 
 或者使用空的 JSON：
@@ -111,22 +113,21 @@ MCP Doc Updater 主要设计为MCP工具，可以在Claude Desktop或其他支�
 {}
 ```
 
-工具会自动检测当前 Git 仓库和 README 文件。
+工具会自动检测当前 Git 仓库，并返回一个提示词。
 
 #### 示例2: 手动指定路径
 
 ```json
 {
-  "repo_path": "/path/to/your/repo",
-  "readme_path": "README.md"
+  "repo_path": "/path/to/your/repo"
 }
 ```
 
-#### 示例3: 自定义标题
+#### 示例3: 生成英文提示词
 
 ```json
 {
-  "heading_marker": "## 版本历史"
+  "language": "en"
 }
 ```
 
@@ -138,13 +139,21 @@ MCP Doc Updater 主要设计为MCP工具，可以在Claude Desktop或其他支�
 }
 ```
 
-#### 示例5: 限制Token使用
+#### 示例5: 不包含diff内容
+
+```json
+{
+  "include_diff": false
+}
+```
+
+#### 示例6: 限制Token使用
 
 ```json
 {
   "repo_path": "/path/to/your/repo",
-  "readme_path": "README.md",
-  "token_budget": 2000
+  "token_budget": 2000,
+  "max_diff_lines": 30
 }
 ```
 
@@ -183,20 +192,20 @@ MCP Doc Updater 主要设计为MCP工具，可以在Claude Desktop或其他支�
 - 在token预算内截断
 - 生成紧凑摘要
 
-### 4. 智能摘要生成
+### 4. 提示词生成
 
-自动生成中文摘要：
-- 识别新增的函数、类、文件
-- 识别修改的函数、文件
-- 识别删除的文件
-- 生成简洁的中文描述
+根据分析结果生成结构化的提示词：
+- 包含任务说明和要求
+- 提供基本信息（比较模式、文件数、行数等）
+- 生成代码变化摘要统计
+- 列出详细变化列表（文件路径、变化类型、重要性等）
+- 可选包含diff内容
+- 提供输出格式示例
+- 支持中文和英文两种语言
 
-### 5. Markdown更新
+### 5. AI生成更新日志
 
-- 查找指定的Markdown标题
-- 在标题下方插入新的更新日志条目
-- 保持现有格式和缩进
-- 支持最大条目数限制
+将生成的提示词发送给AI模型（如Claude），AI会根据提示词中的信息生成简洁、用户友好的更新日志条目。
 
 ## 配置
 
@@ -248,8 +257,8 @@ mcp_doc_updater/
 │       ├── server.py                # MCP服务器主入口
 │       ├── git_analyzer.py          # Git差异分析
 │       ├── diff_filter.py           # 智能差异过滤
-│       ├── changelog_generator.py   # 更新日志生成
-│       ├── markdown_updater.py      # Markdown文档更新
+│       ├── prompt_generator.py      # 提示词生成
+│       ├── markdown_updater.py      # Markdown文档更新（保留）
 │       ├── models.py                # 数据模型
 │       └── utils.py                 # 工具函数
 ├── tests/                           # 测试目录
@@ -295,5 +304,6 @@ MIT License
 欢迎提交Issue和Pull Request！
 
 ## 更新日志
-2026年01月22日  创建项目，继续更新
+
+2026年01月22日  重构项目架构，将更新日志生成改为提示词生成，支持AI辅助生成更新日志；新增多语言支持（中文/英文）
 2026年01月22日  项目成立，实现基础MCP服务器框架和核心功能模块

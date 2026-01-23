@@ -1,4 +1,4 @@
-"""MCP Doc Updater - A tool for updating README changelogs based on Git changes."""
+"""MCP Doc Updater - A tool for generating prompts from Git changes for AI-powered changelog generation."""
 
 __version__ = "0.1.0"
 
@@ -12,6 +12,7 @@ from .models import (
     MarkdownUpdateConfig,
     FilterConfig,
 )
+from .prompt_generator import PromptGenerator
 
 __all__ = [
     "ComparisonMode",
@@ -22,4 +23,5 @@ __all__ = [
     "ChangelogEntry",
     "MarkdownUpdateConfig",
     "FilterConfig",
+    "PromptGenerator",
 ]
